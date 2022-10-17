@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="remote.ico" type="image/x-icon" />
+    <title>RDP远程桌面</title>
+    <script src="./node_modules/guacamole-common-js/dist/guacamole-common.js"></script>
+    <!-- 鼠标操作 -->
+    <script src="./libs/GuacMouse.js"></script>
+    <!-- 剪贴板操作 -->
+    <script src="./libs/clipboard.js"></script>
+    <style>
+        *,
+        body {
+            padding: 0;
+            margin: 0;
+        }
+
+        body {
+            overflow: hidden;
+        }
+
+        #viewport {
+            background-color: coral;
+            border-color: blue;
+            border-width: 1px;
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        #display {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+        }
+
+        #aside {
+            background-color: aliceblue;
+            border-left: 1px solid black;
+        }
+
+        #aside label {
+            width: 90px;
+            display: inline-block;
+            text-align: left;
+            margin-left: 5px;
+        }
+
+        #aside input {
+            width: 70%;
+            height: 30px;
+        }
+
+        #aside button {
+            width: 30%;
+            height: 30px;
+            margin-right: 20px;
+        }
+
+        #config div {
+            margin-top: 5px;
+        }
+
+        #showitem {
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 左侧显示桌面 -->
+    <div id="container" style="height: 100vh;width: 100vw;">
+        <div id="viewport" style="height: 100vh;">
+            <div id="display"></div>
+        </div>
+    </div>
+    <!-- 展开侧边栏 -->
+    <div style="position: absolute;top: 20px;right: 2px;background-color: aliceblue;margin: 3px;padding: 5px;display: none;cursor: pointer;"
+        id="showitem">
+        << 展开侧边栏>>
+    </div>
+    <!-- 右侧显示连接配置 -->
+    <div id="aside" style="height: 100vh;width:350px;position: absolute;top: 0;right: 0;">
+        <div style="width: 100%;height:50px;border-bottom: 1px solid black;text-align: center;line-height: 50px;cursor: pointer;"
+            id="showinfo">
+            <h4> >>>>>点击收起<<<<< </h4>
+        </div>
+        <h2 style="text-align: center;margin-top: 10px;">RDP远程桌面</h2>
+        <!-- 表单 -->
+        <div>
+            <form id="config">
+                <div><label>guacad</label><input type="text" id="addr" name="addr" autocomplete="off"></div>
+                <div><label>屏幕width</label><input type="text" id="screenwidth" name="screenwidth" autocomplete="off">
+                </div>
+                <div><label>屏幕height</label><input type="text" id="screenheight" name="screenheight" autocomplete="off">
+                </div>
+                <div><label>屏幕dpi</label><input type="text" id="screendpi" name="screendpi" autocomplete="off"></div>
+                <div><label>协议</label><input type="text" id="protocol" name="protocol" autocomplete="off"></div>
+                <div><label>Host</label><input type="text" id="host" name="host" autocomplete="off"></div>
+                <div><label>Port</label><input type="text" id="port" name="port" autocomplete="off"></div>
+                <div><label>User</label><input type="text" id="username" name="username" autocomplete="off"></div>
+                <div><label>Password</label><input type="password" id="passwd" name="passwd" autocomplete="off"></div>
+                <div style="margin-left: 120px;margin-top: 50px;">
+                    <button id="connect" type="button">连接</button>
+                    <button id="close" type="button">断开</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+<script>
+    // doc:https://guacamole.apache.org/doc/guacamole-common-js
+    // 侧边栏事件
+    var showinfo = document.getElementById("showinfo");
+    var aside = document.getElementById("aside");
+    var asideWidth = aside.offsetWidth; // 获取侧边栏宽度
+    var item = document.getElementById("showitem");
+    // 设置侧边栏收起
+    showinfo.addEventListener("click", function () {
+        aside.style.transition = "all 0.5s linear 0s";
+        aside.style.right = -asideWidth + "px";
+        item.style.display = "block";
+    }, false);
+    // 设置侧边栏展开
+    item.addEventListener("click", function () {
+        item.style.display = "none";
+        aside.style.transition = "all 0.5s linear 0s";
+        aside.style.right = "0px";
+    }, false);
+    // 监听"连接"按钮事件
+    function doGuacdConnect() {
+        // 获取表单数值
+        var guacad_addr = document.getElementById("addr").value;
+        var asset_protocol = document.getElementById("protocol").value;
+        var screen_width = document.getElementById("screenwidth").value;
+        var screen_height = document.getElementById("screenheight").value;
+        var screen_dpi = document.getElementById("screendpi").value;
+        var asset_host = document.getElementById("host").value;
+        var asset_port = document.getElementById("port").value;
+        var asset_user = document.getElementById("username").value;
+        var asset_password = document.getElementById("passwd").value;
+        // 设置显示屏幕尺寸
+        var elem = document.getElementById("viewport"); // 获取屏幕对象
+        var pixelDensity = window.devicePixelRatio || 1; // 设备像素比
+        // 设置宽、高
+        var screenWidth = elem.clientWidth * pixelDensity;
+        var screenHeight = elem.clientHeight * pixelDensity;
+        screen_width = screenWidth;
+        screen_height = screenHeight;
+        // ws连接
+        var url = "ws://127.0.0.1:6080/webssh" // 拼接url
+        // 设置通道
+        var tunnel = new Guacamole.WebSocketTunnel(url);
+        var arguments = {};
+        var connState = null;
+        var clientState = null;
+        if (client) {
+            display.scale(0);
+            keyboard.onkeydown = keyboard.onkeyup = () => { } // 初始化键盘事件
+        }
+        var client = new Guacamole.Client(tunnel); // 初始化客户端
+        client.onargv = (stream, mimetype, name) => {
+            if (mimetype !== "text/plain") return;
+            var reader = new Guacamole.StringReader(stream);
+            let value = "";
+            reader.ontext = text => {
+                value += text;
+            };
+            reader.onend = () => {
+                const stream = client.createArgumentValueStream("text/plain", name);
+                stream.onack = status => {
+                    if (status.isError()) {
+                        return
+                    }
+                    arguments[name] = value;
+                }
+            };
+        };
+        // rdp连接
+        client.connect("addr=" + guacad_addr + "&protocol=" + asset_protocol + "&width=" + screen_width + "&height=" + screen_height + "&dpi=" + screen_dpi + "&host=" + asset_host + "&port=" + asset_port + "&user=" + asset_user + "&password=" + asset_password);
+        window.onunload = () => client.disconnect(); // 取消连接
+        // 显示远程屏幕
+        var display = client.getDisplay(); // 获取远程屏幕
+        var displayElem = document.getElementById("display"); // 获取本地屏幕对象
+        displayElem.appendChild(display.getElement()) // 添加子节点
+        displayElem.addEventListener("contextmenu", e => { // 监听上下文菜单事件
+            e.stopPropagation();
+            // 取消默认事件
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.returnValue = false;
+        });
+        displayElem.onclick = () => { // 点击
+            displayElem.focus();
+        };
+        displayElem.onfocus = () => {
+            displayElem.className = "focus";
+        };
+        displayElem.onblur = () => {
+            displayElem.className = "";
+        };
+        // 绑定鼠标事件
+        Guacamole.Mouse = mouse;
+        var guacamouse = new Guacamole.Mouse(displayElem);
+        guacamouse.onmouseout = () => { // 鼠标移出事件
+            if (!display) return;
+            display.showCursor(false);
+        };
+        guacamouse.onmousedown = guacamouse.onmouseup = guacamouse.onmousemove = function (mousestate) {
+            const scaleMouseState = Object.assign({}, mousestate, {
+                x: mouseState.x / display.getScale(),
+                y: mouseState.y / display.getScale(),
+            });
+            client.sendMouseState(scaleMouseState);
+        };
+        // 绑定键盘事件
+        var keyboard = new Guacamole.Keyboard(displayElem);
+        keyboard.onkeydown = keysym => { // 键盘按下
+            client.sendKeyEvent(1, keysym);
+        };
+        keyboard.onkeyup = keysym => { // 键盘松开
+            client.sendKeyEvent(0, keysym);
+        };
+        // 绑定剪贴板事件
+        clipboard.install(client);
+        client.onclipboard = clipboard.onClipboard;
+        function copy() { // 复制黏贴
+            if (!client) {
+                return
+            }
+            clipboard.setRemoteClipboard(client);
+        };
+        // 检查连接状态
+        tunnel.onstatechange = state => {
+            switch (state) {
+                case Guacamole.Tunnel.State.CONNECTING:
+                    console.log("connect");
+                    break;
+                case Guacamole.Tunnel.State.OPEN:
+                    console.log("open");
+                    break;
+                case Guacamole.Tunnel.State.UNSTABLE:
+                    console.log("unstable");
+                    break;
+                case Guacamole.Tunnel.State.CLOSED:
+                    console.log("close");
+                    break;
+            }
+        }
+        // client.onstatechange = clientState => {
+        //     switch(clientState) {
+        //         case 0:
+        //             break
+        //     }
+        // }
+
+        // 错误处理
+        tunnel.onerror = status => {
+            console.log("tunnel error");
+        };
+        client.onerror = error => {
+            client.disconnect();
+            alert("client error")
+        };
+        return false;
+    }
+    function resizeScreen() { // 重置屏幕尺寸
+        var elem = document.getElementById("viewport");
+        if (!elem || !elem.offsetWidth) {
+            return
+        }
+        var pixelDensity = window.devicePixelRatio || 1; // 设备像素比
+        var screenWidth = elem.clientWidth * pixelDensity;
+        var screenHeight = elem.clientHeight * pixelDensity;
+        if (display.getWidth() !== screenWidth || display.getHeight() !== screenHeight) { // 如果两边屏幕大小不相等
+            client.sendSize(screenWidth, screenHeight);
+        }
+        setTimeout(() => {
+            var scale = Math.min(
+                elem.clientWidth / Math.max(display.getWidth(), 1),
+                elem.clientHeight / Math.max(display.getHeight(), 1)
+            );
+            display.scale(scale);
+        }, 100);
+    }
+    document.getElementById("connect").addEventListener("click", doGuacdConnect, false);
+    document.getElementById("close").addEventListener("click", function () {
+        return false;
+    }, false);
+</script>
+
+</html>

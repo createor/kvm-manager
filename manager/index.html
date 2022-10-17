@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="kvm.ico" type="image/x-icon" />
+    <title>KVM可视化管理平台</title>
+    <link rel="stylesheet" type="text/css" href="./statics/layui/css/layui.css">
+    <script src="./statics/layui/layui.js"></script>
+    <style>
+        body{
+            width: 100%;
+            height: 100%;
+        }
+        #rightmenu {
+            position: absolute;
+        }
+        #rightmenu button {
+            width: 150px;
+            text-align: center;
+            line-height: 20px;
+            border: 0;
+            padding: 2px;
+        }
+        #rightmenu button:hover {
+            background-color: #d1cebc;
+        }
+    </style>
+</head>
+
+<body>
+    <div>
+        <!-- 左侧显示服务器 -->
+        <div id="machines" class="demo-tree demo-tree-box"></div>
+    </div>
+    <!-- 右键菜单 -->
+    <div id="rightmenu" style="display: none;">
+        <div><button id="edit">编辑</button></div>
+        <div><button id="delete">删除</button></div>
+        <div><button id="connect">连接</button></div>
+        <div><button id="rename">重命名</button></div>
+    </div>
+</body>
+<script>
+    layui.use(['tree'], function () {
+        var tree = layui.tree,
+            $ = layui.jquery,
+            layer = layui.layer,
+            testdata = [{
+                title: '江西'
+                , id: 1
+                , children: [{
+                    title: '南昌'
+                    , id: 1000
+                    , children: [{
+                        title: '青山湖区'
+                        , id: 10001
+                    }, {
+                        title: '高新区'
+                        , id: 10002
+                    }]
+                }, {
+                    title: '九江'
+                    , id: 1001
+                }, {
+                    title: '赣州'
+                    , id: 1002
+                }]
+            }, {
+                title: '广西'
+                , id: 2
+                , children: [{
+                    title: '南宁'
+                    , id: 2000
+                }, {
+                    title: '桂林'
+                    , id: 2001
+                }]
+            }, {
+                title: '陕西'
+                , id: 3
+                , children: [{
+                    title: '西安'
+                    , id: 3000
+                }, {
+                    title: '延安'
+                    , id: 3001
+                }]
+            }];
+        // 树形组件显示服务器信息
+        tree.render({
+            elem: "#machines",
+            data:testdata
+            // showLine:false
+        }); 
+        // 右键服务器信息菜单
+        $(".demo-tree .layui-tree-set").on("contextmenu",function(e){
+            // 组件浏览器默认右键菜单
+            e.preventDefault();
+            // 获取当前鼠标的x和y
+            var currX = e.clientX - 5 + "px";
+            var currY = e.clientY - 5 + "px";
+            $("#rightmenu")[0].style.top = currY;
+            $("#rightmenu")[0].style.left = currX;
+            $("#rightmenu").show();
+            _this = this;
+            // 右键菜单事件
+            $("#edit").on("click",function(){
+                console.log(_this);
+            });
+            return false;
+        });
+        document.onclick = function(){
+            $("#rightmenu").hide(); 
+        }
+    });
+</script>
+
+</html>
